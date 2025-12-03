@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { LinkItem } from '../types';
 import { ICONS } from './IconPicker';
@@ -14,7 +15,7 @@ export const LinkCard: React.FC<LinkCardProps> = ({ item, onClick }) => {
   return (
     <div 
         onClick={() => onClick(item)}
-        className="group bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-4 cursor-pointer active:scale-[0.99] border border-slate-100/50"
+        className="group bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-4 cursor-pointer active:scale-[0.99] border border-slate-100/50 h-full"
     >
       <div 
         className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 text-white shadow-sm"

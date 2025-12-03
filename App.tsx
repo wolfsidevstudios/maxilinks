@@ -10,6 +10,8 @@ import { AddLinkForm } from './components/AddLinkForm';
 import { LinkDetailSheet } from './components/LinkDetailSheet';
 import { Button } from './components/Button';
 import { BottomNav } from './components/BottomNav';
+import { TopNav } from './components/TopNav';
+import { Sidebar } from './components/Sidebar';
 
 const getShareParams = (): ShareTargetParams => {
   if (typeof window === 'undefined') return {};
@@ -19,6 +21,16 @@ const getShareParams = (): ShareTargetParams => {
     text: params.get('text') || undefined,
     url: params.get('url') || undefined,
   };
+};
+
+// Helper to determine active tab from URL path
+const getTabFromPath = (): Tab => {
+  if (typeof window === 'undefined') return 'home';
+  const path = window.location.pathname;
+  if (path === '/links') return 'links';
+  if (path === '/favorites') return 'favorites';
+  if (path === '/settings') return 'settings';
+  return 'home';
 };
 
 // --- Sub-Components (Views) ---
@@ -34,14 +46,15 @@ const HomeView: React.FC<HomeViewProps> = ({ links, setActiveTab, setSelectedLin
   const recents = [...links].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
 
   return (
-      <div className="space-y-6 pt-2">
+      <div className="space-y-6 pt-2 pb-20 md:pb-6">
           <div className="flex items-center justify-between">
-              <h1 className="text-4xl font-bold text-slate-900 tracking-tight">Links</h1>
-              <div className="w-12 h-12" /> {/* Spacer */}
+              <h1 className="text-4xl font-bold text-slate-900 tracking-tight">Home</h1>
+              {/* Spacer for TopNav on Desktop */}
+              <div className="hidden md:block w-12 h-12" /> 
           </div>
 
-          {/* Dashboard Grid */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Dashboard Grid - Responsive Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <button 
                   onClick={() => setActiveTab('favorites')}
                   className="bg-white px-4 py-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3 hover:shadow-md transition-all text-left group"
@@ -98,9 +111,10 @@ const HomeView: React.FC<HomeViewProps> = ({ links, setActiveTab, setSelectedLin
           {/* Recents List */}
           <div>
               <h3 className="text-xl font-bold text-slate-900 mb-4 px-1">Recientes</h3>
-              <div className="space-y-3">
+              {/* Grid on tablet/desktop */}
+              <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
                   {recents.length === 0 ? (
-                      <p className="text-slate-400 text-center py-4 text-sm">No recent links saved.</p>
+                      <div className="col-span-full text-slate-400 text-center py-4 text-sm">No recent links saved.</div>
                   ) : (
                       recents.map(link => (
                           <LinkCard key={link.id} item={link} onClick={setSelectedLink} />
@@ -136,10 +150,12 @@ const LinksView: React.FC<LinksViewProps> = ({ links, activeTab, searchQuery, se
   }
 
   return (
-      <div className="space-y-4 pt-2">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">
-              {activeTab === 'favorites' ? 'Favorites' : 'All Links'}
-          </h1>
+      <div className="space-y-4 pt-2 pb-24 md:pb-6">
+          <div className="flex items-center justify-between">
+              <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">
+                  {activeTab === 'favorites' ? 'Favorites' : 'All Links'}
+              </h1>
+          </div>
           
           <div className="relative mb-6">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 z-10">
@@ -155,9 +171,9 @@ const LinksView: React.FC<LinksViewProps> = ({ links, activeTab, searchQuery, se
               />
           </div>
 
-          <div className="space-y-3 pb-24">
+          <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
               {displayed.length === 0 ? (
-                  <div className="text-center py-10 opacity-50">
+                  <div className="col-span-full text-center py-10 opacity-50">
                       <p>No links found.</p>
                   </div>
               ) : (
@@ -187,7 +203,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   handleDisableBiometric,
   clearAllData
 }) => (
-  <div className="space-y-6 pt-2 pb-24">
+  <div className="space-y-6 pt-2 pb-24 md:pb-6 max-w-2xl mx-auto">
     <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-6">Settings</h1>
     
     {/* App Install Card */}
@@ -267,13 +283,57 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [shareParams, setShareParams] = useState<ShareTargetParams>({});
   
-  const [activeTab, setActiveTab] = useState<Tab>('home');
+  const [activeTab, setActiveTab] = useState<Tab>(getTabFromPath);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Auth State
   const [isLocked, setIsLocked] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [authError, setAuthError] = useState('');
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+        const tab = getTabFromPath();
+        setActiveTab(tab);
+        // Update document title for history nav
+        const titles: Record<Tab, string> = {
+            home: 'LinkVault - Home',
+            links: 'LinkVault - All Links',
+            favorites: 'LinkVault - Favorites',
+            settings: 'LinkVault - Settings'
+        };
+        document.title = titles[tab] || 'LinkVault';
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Update URL and State when Tab Changes
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    const titles: Record<Tab, string> = {
+        home: 'LinkVault - Home',
+        links: 'LinkVault - All Links',
+        favorites: 'LinkVault - Favorites',
+        settings: 'LinkVault - Settings'
+    };
+    document.title = titles[tab] || 'LinkVault';
+
+    let path = '/';
+    if (tab === 'links') path = '/links';
+    if (tab === 'favorites') path = '/favorites';
+    if (tab === 'settings') path = '/settings';
+
+    // Only push if different to prevent duplicate history entries
+    if (window.location.pathname !== path) {
+        window.history.pushState({}, '', path);
+    }
+  };
 
   useEffect(() => {
     // Check auth requirement on mount
@@ -306,6 +366,19 @@ export default function App() {
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
+  }, []);
+
+  // Keyboard shortcut for search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+            e.preventDefault();
+            handleTabChange('links');
+            setTimeout(() => searchInputRef.current?.focus(), 100);
+        }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const handleUnlock = async () => {
@@ -362,7 +435,7 @@ export default function App() {
     setLinks(updated);
     setIsAddSheetOpen(false);
     setShareParams({}); 
-    setActiveTab('home'); 
+    handleTabChange('home'); 
   };
 
   const handleUpdateLink = (updatedLink: LinkItem) => {
@@ -378,7 +451,7 @@ export default function App() {
   };
 
   const handleSearchFocus = () => {
-    setActiveTab('links');
+    handleTabChange('links');
     setTimeout(() => {
       searchInputRef.current?.focus();
     }, 300);
@@ -417,14 +490,36 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans transition-colors duration-300">
       
+      {/* Floating Sidebar */}
+      <Sidebar 
+         isOpen={isSidebarOpen} 
+         onClose={() => setIsSidebarOpen(false)}
+         activeTab={activeTab}
+         onTabChange={(tab) => {
+             handleTabChange(tab);
+         }}
+         linksCount={links.length}
+         favoritesCount={links.filter(l => l.isFavorite).length}
+         unreadCount={links.filter(l => !l.isRead).length}
+      />
+
       {/* Main Content Area */}
-      <main className="max-w-md mx-auto px-5 py-6 min-h-screen">
+      <main className={`
+          mx-auto px-5 py-6 min-h-screen transition-all duration-300
+          md:max-w-4xl lg:max-w-6xl
+          ${isSidebarOpen ? 'md:pl-80' : ''} 
+          /* On desktop, if sidebar is closed, content centers. If open, pushed right. */
+      `}>
+        
+        {/* Spacer for Top Nav on desktop */}
+        <div className="hidden md:block h-16" />
+
         {activeTab === 'home' && (
             <HomeView 
                 links={links} 
-                setActiveTab={setActiveTab} 
+                setActiveTab={handleTabChange} 
                 setSelectedLink={setSelectedLink} 
             />
         )}
@@ -450,18 +545,26 @@ export default function App() {
         )}
       </main>
 
-      {/* Navigation */}
+      {/* Navigation Systems */}
       <BottomNav 
         activeTab={activeTab} 
         onTabChange={(tab) => {
-            setActiveTab(tab);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            handleTabChange(tab);
         }}
         onSearchClick={handleSearchFocus}
         onAddClick={() => {
             setShareParams({});
             setIsAddSheetOpen(true);
         }}
+      />
+
+      <TopNav 
+        onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        onAddClick={() => {
+            setShareParams({});
+            setIsAddSheetOpen(true);
+        }}
+        onSearchClick={handleSearchFocus}
       />
 
       {/* Add Link Sheet */}
@@ -482,7 +585,8 @@ export default function App() {
        <Sheet 
         isOpen={!!selectedLink} 
         onClose={() => setSelectedLink(null)} 
-        className="!h-[85vh]"
+        className="!h-[85vh] md:!h-[90vh] md:!w-[600px] md:!mx-auto md:!right-0 md:!left-auto md:!rounded-t-2xl md:!rounded-l-2xl md:!mr-4"
+        // Custom styling to make the sheet act more like a side-drawer on Desktop if needed, or keeping standard sheet
       >
         {selectedLink && (
             <LinkDetailSheet 

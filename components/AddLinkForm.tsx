@@ -163,10 +163,11 @@ export const AddLinkForm: React.FC<AddLinkFormProps> = ({
                     <button 
                         type="button"
                         onClick={handlePaste}
-                        className="px-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-colors flex items-center justify-center"
+                        className="px-4 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-md shadow-slate-200"
                         title="Paste from Clipboard"
                     >
-                        <Clipboard size={20} />
+                        <Clipboard size={18} />
+                        <span className="hidden sm:inline text-sm font-bold">Paste</span>
                     </button>
                 </div>
             </div>

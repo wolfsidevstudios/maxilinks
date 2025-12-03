@@ -12,7 +12,7 @@ interface BottomNavProps {
 
 export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange, onSearchClick, onAddClick }) => {
   return (
-    <div className="fixed bottom-6 left-0 right-0 z-30 flex items-center justify-center gap-3 px-4 pointer-events-none">
+    <div className="fixed bottom-6 left-0 right-0 z-30 flex items-center justify-center gap-3 px-4 pointer-events-none md:hidden">
       {/* Main Navigation Pill */}
       <nav className="bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl shadow-slate-300/40 rounded-full p-2 flex items-center gap-1 pointer-events-auto">
         <NavButton 
