@@ -13,11 +13,11 @@ export const LinkCard: React.FC<LinkCardProps> = ({ item, onClick }) => {
   try {
     domain = new URL(item.url).hostname.replace('www.', '');
   } catch (e) {
-    // Fallback if URL is invalid (e.g. missing protocol)
     domain = item.url;
   }
   
-  const IconComp = ICONS.find(i => i.id === item.icon)?.component || ICONS[0].component;
+  const isImageIcon = item.icon?.startsWith('http');
+  const IconComp = !isImageIcon ? (ICONS.find(i => i.id === item.icon)?.component || ICONS[0].component) : null;
 
   return (
     <div 
@@ -25,10 +25,14 @@ export const LinkCard: React.FC<LinkCardProps> = ({ item, onClick }) => {
         className="group bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-4 cursor-pointer active:scale-[0.99] border border-slate-100/50 h-full"
     >
       <div 
-        className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 text-white shadow-sm"
+        className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 text-white shadow-sm overflow-hidden relative"
         style={{ backgroundColor: item.color || '#3b82f6' }}
       >
-        <IconComp size={24} strokeWidth={2.5} />
+        {isImageIcon ? (
+            <img src={item.icon} alt="" className="w-6 h-6 object-contain" />
+        ) : (
+            IconComp && <IconComp size={24} strokeWidth={2.5} />
+        )}
       </div>
 
       <div className="flex-1 min-w-0">

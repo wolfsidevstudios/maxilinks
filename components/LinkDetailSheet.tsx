@@ -19,7 +19,8 @@ interface LinkDetailSheetProps {
 export const LinkDetailSheet: React.FC<LinkDetailSheetProps> = ({ link, onUpdate, onDelete, onClose }) => {
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const IconComp = ICONS.find(i => i.id === link.icon)?.component || ICONS[0].component;
+  const isImageIcon = link.icon?.startsWith('http');
+  const IconComp = !isImageIcon ? (ICONS.find(i => i.id === link.icon)?.component || ICONS[0].component) : null;
   
   let domain = link.url;
   try {
@@ -50,7 +51,6 @@ export const LinkDetailSheet: React.FC<LinkDetailSheetProps> = ({ link, onUpdate
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(link.url);
-    // Could add toast here
   };
 
   return (
@@ -58,10 +58,14 @@ export const LinkDetailSheet: React.FC<LinkDetailSheetProps> = ({ link, onUpdate
       {/* Header Info */}
       <div className="flex items-start gap-4">
         <div 
-            className="w-20 h-20 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-slate-100"
+            className="w-20 h-20 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-slate-100 overflow-hidden relative"
             style={{ backgroundColor: link.color || '#3b82f6' }}
         >
-            <IconComp size={40} className="text-white" />
+            {isImageIcon ? (
+                <img src={link.icon} alt="" className="w-10 h-10 object-contain" />
+            ) : (
+                IconComp && <IconComp size={40} className="text-white" />
+            )}
         </div>
         <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold text-slate-900 leading-snug mb-1 line-clamp-2">{link.title}</h2>
@@ -148,7 +152,7 @@ export const LinkDetailSheet: React.FC<LinkDetailSheetProps> = ({ link, onUpdate
         )}
       </div>
 
-       {/* Notes Placeholder (Can be expanded to real input) */}
+       {/* Notes Placeholder */}
        <div className="space-y-3">
             <h3 className="font-bold text-slate-900">Notes</h3>
              <p className="text-slate-400 text-sm italic">No notes added.</p>
