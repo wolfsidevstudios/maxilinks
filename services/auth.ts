@@ -32,8 +32,11 @@ export const enableBiometric = async (): Promise<boolean> => {
         });
         localStorage.setItem(LOCAL_STORAGE_KEY, 'true');
         return true;
-    } catch (e) {
+    } catch (e: any) {
         console.error("Biometric setup failed", e);
+        if (e.name === 'NotAllowedError' || e.message?.includes('publickey-credentials-create')) {
+             throw new Error("Biometrics are restricted in this preview environment. Please open the app in a full window or new tab to enable security features.");
+        }
         throw new Error("Failed to set up biometrics. Please try again.");
     }
 }
@@ -57,7 +60,7 @@ export const authenticate = async (): Promise<boolean> => {
         });
         
         return !!credential;
-    } catch (e) {
+    } catch (e: any) {
         console.error("Authentication failed", e);
         return false;
     }

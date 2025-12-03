@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, Heart, Clock, LayoutGrid, CheckCircle, Lock, Fingerprint, Shield, ShieldCheck, AlertCircle, Trash2 } from 'lucide-react';
+import { Search, Heart, Clock, LayoutGrid, CheckCircle, Lock, Fingerprint, Shield, AlertCircle, Trash2 } from 'lucide-react';
 import { LinkItem, ShareTargetParams, Tab } from './types';
 import * as storageService from './services/storage';
 import * as authService from './services/auth';
@@ -20,6 +20,243 @@ const getShareParams = (): ShareTargetParams => {
     url: params.get('url') || undefined,
   };
 };
+
+// --- Sub-Components (Views) ---
+
+interface HomeViewProps {
+  links: LinkItem[];
+  setActiveTab: (tab: Tab) => void;
+  setSelectedLink: (link: LinkItem) => void;
+}
+
+const HomeView: React.FC<HomeViewProps> = ({ links, setActiveTab, setSelectedLink }) => {
+  // Recent 5 links
+  const recents = [...links].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
+
+  return (
+      <div className="space-y-6 pt-2">
+          <div className="flex items-center justify-between">
+              <h1 className="text-4xl font-bold text-slate-900 tracking-tight">Links</h1>
+              <div className="w-12 h-12" /> {/* Spacer */}
+          </div>
+
+          {/* Dashboard Grid */}
+          <div className="grid grid-cols-2 gap-3">
+              <button 
+                  onClick={() => setActiveTab('favorites')}
+                  className="bg-white px-4 py-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3 hover:shadow-md transition-all text-left group"
+              >
+                  <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform shadow-red-200 shadow-lg">
+                      <Heart size={20} fill="currentColor" />
+                  </div>
+                  <div className="min-w-0">
+                      <span className="block font-bold text-slate-900 truncate">Favorites</span>
+                      <span className="text-xs text-slate-500 font-medium">{links.filter(l => l.isFavorite).length} items</span>
+                  </div>
+              </button>
+
+              <button 
+                  onClick={() => setActiveTab('links')}
+                  className="bg-white px-4 py-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3 hover:shadow-md transition-all text-left group"
+              >
+                  <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform shadow-blue-200 shadow-lg">
+                      <Clock size={20} />
+                  </div>
+                  <div className="min-w-0">
+                      <span className="block font-bold text-slate-900 truncate">Recent</span>
+                      <span className="text-xs text-slate-500 font-medium">View all</span>
+                  </div>
+              </button>
+
+              <button 
+                  onClick={() => setActiveTab('links')} 
+                  className="bg-white px-4 py-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3 hover:shadow-md transition-all text-left group"
+              >
+                  <div className="w-10 h-10 rounded-full bg-slate-500 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform shadow-slate-200 shadow-lg">
+                      <div className="w-4 h-4 rounded-full border-2 border-white/40" />
+                  </div>
+                  <div className="min-w-0">
+                      <span className="block font-bold text-slate-900 truncate">Unread</span>
+                      <span className="text-xs text-slate-500 font-medium">{links.filter(l => !l.isRead).length} items</span>
+                  </div>
+              </button>
+
+              <button 
+                   onClick={() => setActiveTab('links')}
+                  className="bg-white px-4 py-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3 hover:shadow-md transition-all text-left group"
+              >
+                  <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform shadow-purple-200 shadow-lg">
+                      <LayoutGrid size={20} />
+                  </div>
+                  <div className="min-w-0">
+                      <span className="block font-bold text-slate-900 truncate">All</span>
+                      <span className="text-xs text-slate-500 font-medium">{links.length} items</span>
+                  </div>
+              </button>
+          </div>
+
+          {/* Recents List */}
+          <div>
+              <h3 className="text-xl font-bold text-slate-900 mb-4 px-1">Recientes</h3>
+              <div className="space-y-3">
+                  {recents.length === 0 ? (
+                      <p className="text-slate-400 text-center py-4 text-sm">No recent links saved.</p>
+                  ) : (
+                      recents.map(link => (
+                          <LinkCard key={link.id} item={link} onClick={setSelectedLink} />
+                      ))
+                  )}
+              </div>
+          </div>
+      </div>
+  );
+};
+
+interface LinksViewProps {
+  links: LinkItem[];
+  activeTab: Tab;
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+  setSelectedLink: (link: LinkItem) => void;
+  searchInputRef: React.RefObject<HTMLInputElement | null>;
+}
+
+const LinksView: React.FC<LinksViewProps> = ({ links, activeTab, searchQuery, setSearchQuery, setSelectedLink, searchInputRef }) => {
+  // Filter logic
+  let displayed = links;
+  if (activeTab === 'favorites') {
+      displayed = displayed.filter(l => l.isFavorite);
+  }
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    displayed = displayed.filter(link => 
+      link.title.toLowerCase().includes(q) ||
+      link.tags.some(tag => tag.toLowerCase().includes(q))
+    );
+  }
+
+  return (
+      <div className="space-y-4 pt-2">
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">
+              {activeTab === 'favorites' ? 'Favorites' : 'All Links'}
+          </h1>
+          
+          <div className="relative mb-6">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 z-10">
+                  <Search size={18} />
+              </div>
+              <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-white/70 backdrop-blur-md border border-slate-200/80 rounded-full focus:bg-white focus:ring-2 focus:ring-slate-900/10 focus:border-transparent outline-none transition-all shadow-sm placeholder-slate-500 text-slate-900"
+              />
+          </div>
+
+          <div className="space-y-3 pb-24">
+              {displayed.length === 0 ? (
+                  <div className="text-center py-10 opacity-50">
+                      <p>No links found.</p>
+                  </div>
+              ) : (
+                  displayed.map(link => (
+                      <LinkCard key={link.id} item={link} onClick={setSelectedLink} />
+                  ))
+              )}
+          </div>
+      </div>
+  );
+};
+
+interface SettingsViewProps {
+  deferredPrompt: any;
+  handleInstallClick: () => void;
+  biometricEnabled: boolean;
+  handleEnableBiometric: () => void;
+  handleDisableBiometric: () => void;
+  clearAllData: () => void;
+}
+
+const SettingsView: React.FC<SettingsViewProps> = ({ 
+  deferredPrompt, 
+  handleInstallClick, 
+  biometricEnabled, 
+  handleEnableBiometric, 
+  handleDisableBiometric,
+  clearAllData
+}) => (
+  <div className="space-y-6 pt-2 pb-24">
+    <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-6">Settings</h1>
+    
+    {/* App Install Card */}
+    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+         {deferredPrompt ? (
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-bold text-slate-900">Install App</p>
+              <p className="text-xs text-slate-500">Enable share target & offline access</p>
+            </div>
+            <Button onClick={handleInstallClick} variant="primary" className="!rounded-xl !py-2 !px-4 !text-sm">Install</Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 text-green-600">
+             <CheckCircle size={20} />
+             <span className="font-medium">App Installed</span>
+          </div>
+        )}
+    </div>
+
+    {/* Security Card */}
+    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
+        <h4 className="font-bold text-slate-900 flex items-center gap-2">
+            <Shield size={18} className="text-slate-400" /> Security
+        </h4>
+        <div className="flex items-center justify-between">
+            <div>
+                <p className="font-medium text-slate-900">Biometric Lock</p>
+                <p className="text-xs text-slate-500">Require FaceID/TouchID to open</p>
+            </div>
+            <div className="flex items-center">
+                 {biometricEnabled ? (
+                     <Button onClick={handleDisableBiometric} variant="secondary" className="!py-2 !px-3 !text-xs text-red-600 border-red-100 bg-red-50">Disable</Button>
+                 ) : (
+                     <Button onClick={handleEnableBiometric} variant="secondary" className="!py-2 !px-3 !text-xs text-green-600 border-green-100 bg-green-50">Enable</Button>
+                 )}
+            </div>
+        </div>
+    </div>
+
+    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
+        <div>
+          <h4 className="font-bold text-slate-900 mb-1">About</h4>
+          <p className="text-sm text-slate-500 leading-relaxed">
+            LinkVault v2.1 <br/>
+            Organize your digital life with AI.
+          </p>
+        </div>
+        <div className="p-4 bg-slate-50 rounded-xl">
+           <h5 className="font-bold text-xs uppercase text-slate-400 mb-2">Desktop Tip</h5>
+           <p className="text-xs text-slate-600">
+               To save links from your desktop browser, install the app or use the "Paste from Clipboard" button in the Add menu.
+           </p>
+        </div>
+    </div>
+
+    <Button 
+        variant="secondary" 
+        fullWidth 
+        className="!text-red-600 !border-red-100 hover:!bg-red-50 !rounded-2xl"
+        onClick={clearAllData}
+      >
+        <Trash2 size={18} className="mr-2" />
+        Clear All Data
+      </Button>
+  </div>
+);
+
+// --- Main App Component ---
 
 export default function App() {
   const [links, setLinks] = useState<LinkItem[]>([]);
@@ -147,6 +384,14 @@ export default function App() {
     }, 300);
   };
 
+  const clearAllData = () => {
+    if(window.confirm("Delete all data? This cannot be undone.")) {
+      localStorage.clear();
+      setLinks([]);
+      window.location.reload();
+    }
+  };
+
   // --- Lock Screen ---
   if (isLocked) {
       return (
@@ -171,224 +416,38 @@ export default function App() {
       );
   }
 
-  // --- Views ---
-
-  const HomeView = () => {
-    // Recent 5 links
-    const recents = [...links].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
-
-    return (
-        <div className="space-y-6 pt-2">
-            <div className="flex items-center justify-between">
-                <h1 className="text-4xl font-bold text-slate-900 tracking-tight">Links</h1>
-                <div className="w-12 h-12" /> {/* Spacer for balance if needed, or removing Plus button since it's in nav now */}
-            </div>
-
-            {/* Dashboard Grid */}
-            <div className="grid grid-cols-2 gap-3">
-                <button 
-                    onClick={() => setActiveTab('favorites')}
-                    className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-3 hover:shadow-md transition-all text-left group"
-                >
-                    <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
-                        <Heart size={20} fill="currentColor" />
-                    </div>
-                    <div>
-                        <span className="block font-bold text-slate-900">Favorites</span>
-                        <span className="text-xs text-slate-500 font-medium">{links.filter(l => l.isFavorite).length} items</span>
-                    </div>
-                </button>
-
-                <button 
-                    onClick={() => setActiveTab('links')}
-                    className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-3 hover:shadow-md transition-all text-left group"
-                >
-                    <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
-                        <Clock size={20} />
-                    </div>
-                    <div>
-                        <span className="block font-bold text-slate-900">Recent</span>
-                        <span className="text-xs text-slate-500 font-medium">View all</span>
-                    </div>
-                </button>
-
-                <button 
-                    onClick={() => setActiveTab('links')} 
-                    className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-3 hover:shadow-md transition-all text-left group"
-                >
-                    <div className="w-10 h-10 rounded-full bg-slate-500 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
-                        <div className="w-4 h-4 rounded-full border-2 border-white/40" />
-                    </div>
-                    <div>
-                        <span className="block font-bold text-slate-900">Unread</span>
-                        <span className="text-xs text-slate-500 font-medium">{links.filter(l => !l.isRead).length} items</span>
-                    </div>
-                </button>
-
-                <button 
-                     onClick={() => setActiveTab('links')}
-                    className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-3 hover:shadow-md transition-all text-left group"
-                >
-                    <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
-                        <LayoutGrid size={20} />
-                    </div>
-                    <div>
-                        <span className="block font-bold text-slate-900">All</span>
-                        <span className="text-xs text-slate-500 font-medium">{links.length} items</span>
-                    </div>
-                </button>
-            </div>
-
-            {/* Recents List */}
-            <div>
-                <h3 className="text-xl font-bold text-slate-900 mb-4 px-1">Recientes</h3>
-                <div className="space-y-3">
-                    {recents.length === 0 ? (
-                        <p className="text-slate-400 text-center py-4 text-sm">No recent links saved.</p>
-                    ) : (
-                        recents.map(link => (
-                            <LinkCard key={link.id} item={link} onClick={setSelectedLink} />
-                        ))
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-  };
-
-  const LinksView = () => {
-    // Filter logic
-    let displayed = links;
-    if (activeTab === 'favorites') {
-        displayed = displayed.filter(l => l.isFavorite);
-    }
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      displayed = displayed.filter(link => 
-        link.title.toLowerCase().includes(q) ||
-        link.tags.some(tag => tag.toLowerCase().includes(q))
-      );
-    }
-
-    return (
-        <div className="space-y-4 pt-2">
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">
-                {activeTab === 'favorites' ? 'Favorites' : 'All Links'}
-            </h1>
-            
-            <div className="relative mb-6">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 z-10">
-                    <Search size={18} />
-                </div>
-                <input
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Search..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-white/70 backdrop-blur-md border border-slate-200/80 rounded-full focus:bg-white focus:ring-2 focus:ring-slate-900/10 focus:border-transparent outline-none transition-all shadow-sm placeholder-slate-500 text-slate-900"
-                />
-            </div>
-
-            <div className="space-y-3 pb-24">
-                {displayed.length === 0 ? (
-                    <div className="text-center py-10 opacity-50">
-                        <p>No links found.</p>
-                    </div>
-                ) : (
-                    displayed.map(link => (
-                        <LinkCard key={link.id} item={link} onClick={setSelectedLink} />
-                    ))
-                )}
-            </div>
-        </div>
-    );
-  };
-
-  const SettingsView = () => (
-    <div className="space-y-6 pt-2 pb-24">
-      <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-6">Settings</h1>
-      
-      {/* App Install Card */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
-           {deferredPrompt ? (
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-bold text-slate-900">Install App</p>
-                <p className="text-xs text-slate-500">Enable share target & offline access</p>
-              </div>
-              <Button onClick={handleInstallClick} variant="primary" className="!rounded-xl !py-2 !px-4 !text-sm">Install</Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3 text-green-600">
-               <CheckCircle size={20} />
-               <span className="font-medium">App Installed</span>
-            </div>
-          )}
-      </div>
-
-      {/* Security Card */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
-          <h4 className="font-bold text-slate-900 flex items-center gap-2">
-              <Shield size={18} className="text-slate-400" /> Security
-          </h4>
-          <div className="flex items-center justify-between">
-              <div>
-                  <p className="font-medium text-slate-900">Biometric Lock</p>
-                  <p className="text-xs text-slate-500">Require FaceID/TouchID to open</p>
-              </div>
-              <div className="flex items-center">
-                   {biometricEnabled ? (
-                       <Button onClick={handleDisableBiometric} variant="secondary" className="!py-2 !px-3 !text-xs text-red-600 border-red-100 bg-red-50">Disable</Button>
-                   ) : (
-                       <Button onClick={handleEnableBiometric} variant="secondary" className="!py-2 !px-3 !text-xs text-green-600 border-green-100 bg-green-50">Enable</Button>
-                   )}
-              </div>
-          </div>
-      </div>
-
-      <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
-          <div>
-            <h4 className="font-bold text-slate-900 mb-1">About</h4>
-            <p className="text-sm text-slate-500 leading-relaxed">
-              LinkVault v2.1 <br/>
-              Organize your digital life with AI.
-            </p>
-          </div>
-          <div className="p-4 bg-slate-50 rounded-xl">
-             <h5 className="font-bold text-xs uppercase text-slate-400 mb-2">Desktop Tip</h5>
-             <p className="text-xs text-slate-600">
-                 To save links from your desktop browser, install the app or use the "Paste from Clipboard" button in the Add menu.
-             </p>
-          </div>
-      </div>
-
-      <Button 
-          variant="secondary" 
-          fullWidth 
-          className="!text-red-600 !border-red-100 hover:!bg-red-50 !rounded-2xl"
-          onClick={() => {
-            if(window.confirm("Delete all data? This cannot be undone.")) {
-              localStorage.clear();
-              setLinks([]);
-              window.location.reload();
-            }
-          }}
-        >
-          <Trash2 size={18} className="mr-2" />
-          Clear All Data
-        </Button>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
       
       {/* Main Content Area */}
       <main className="max-w-md mx-auto px-5 py-6 min-h-screen">
-        {activeTab === 'home' && <HomeView />}
-        {(activeTab === 'links' || activeTab === 'favorites') && <LinksView />}
-        {activeTab === 'settings' && <SettingsView />}
+        {activeTab === 'home' && (
+            <HomeView 
+                links={links} 
+                setActiveTab={setActiveTab} 
+                setSelectedLink={setSelectedLink} 
+            />
+        )}
+        {(activeTab === 'links' || activeTab === 'favorites') && (
+            <LinksView 
+                links={links} 
+                activeTab={activeTab} 
+                searchQuery={searchQuery} 
+                setSearchQuery={setSearchQuery} 
+                setSelectedLink={setSelectedLink}
+                searchInputRef={searchInputRef}
+            />
+        )}
+        {activeTab === 'settings' && (
+            <SettingsView 
+                deferredPrompt={deferredPrompt}
+                handleInstallClick={handleInstallClick}
+                biometricEnabled={biometricEnabled}
+                handleEnableBiometric={handleEnableBiometric}
+                handleDisableBiometric={handleDisableBiometric}
+                clearAllData={clearAllData}
+            />
+        )}
       </main>
 
       {/* Navigation */}
@@ -423,7 +482,7 @@ export default function App() {
        <Sheet 
         isOpen={!!selectedLink} 
         onClose={() => setSelectedLink(null)} 
-        className="!h-[85vh]" // Make it tall
+        className="!h-[85vh]"
       >
         {selectedLink && (
             <LinkDetailSheet 
