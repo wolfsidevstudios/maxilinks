@@ -360,10 +360,15 @@ export default function App() {
       // This specifically fixes issues where share target puts URL in 'text' field
       if (!finalUrl) {
           const contentToCheck = `${incomingShare.text || ''} ${incomingShare.title || ''}`;
-          // Regex to find http/https links
-          const urlMatch = contentToCheck.match(/(https?:\/\/[^\s]+)/);
+          // Improved Regex to find links (http, https, or starting with www.)
+          // This captures "www.google.com" even if missing protocol
+          const urlMatch = contentToCheck.match(/((https?:\/\/)|(www\.))[^\s]+/);
           if (urlMatch) {
               finalUrl = urlMatch[0];
+              // If it starts with www., prepend https://
+              if (finalUrl.startsWith('www.')) {
+                  finalUrl = 'https://' + finalUrl;
+              }
           }
       }
 

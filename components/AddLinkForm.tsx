@@ -28,12 +28,21 @@ export const AddLinkForm: React.FC<AddLinkFormProps> = ({
   const [color, setColor] = useState(COLORS[0].value);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Helper to ensure URL has protocol
+  const sanitizeUrl = (input: string) => {
+      if (!input) return '';
+      // If it starts with www., or just has no protocol, add https://
+      if (!/^https?:\/\//i.test(input)) {
+          return `https://${input}`;
+      }
+      return input;
+  };
+
   // Auto-fill title if empty when URL changes (basic)
   useEffect(() => {
     if (url && !title) {
         try {
-            // Ensure protocol for parsing purposes
-            const validUrl = url.match(/^https?:\/\//) ? url : `https://${url}`;
+            const validUrl = sanitizeUrl(url);
             const hostname = new URL(validUrl).hostname.replace('www.', '');
             if (hostname) {
                 setTitle(hostname.charAt(0).toUpperCase() + hostname.slice(1));
@@ -50,9 +59,11 @@ export const AddLinkForm: React.FC<AddLinkFormProps> = ({
 
   const handleSmartSave = async () => {
      if (!url) return;
+     const cleanUrl = sanitizeUrl(url);
+
      setIsProcessing(true);
      // If user hasn't enriched yet, do it now
-     const enriched = await enrichLinkData(title, url);
+     const enriched = await enrichLinkData(title, cleanUrl);
      
      const finalDesc = description || enriched.description;
      const finalTags = tags 
@@ -60,8 +71,8 @@ export const AddLinkForm: React.FC<AddLinkFormProps> = ({
         : enriched.tags;
 
      onSave({
-        url, 
-        title: title || url, 
+        url: cleanUrl, 
+        title: title || cleanUrl, 
         description: finalDesc, 
         tags: finalTags, 
         enriched: true,
@@ -72,10 +83,11 @@ export const AddLinkForm: React.FC<AddLinkFormProps> = ({
   };
 
   const handleManualSave = () => {
+    const cleanUrl = sanitizeUrl(url);
     const tagArray = tags.split(',').map(t => t.trim()).filter(Boolean);
     onSave({
-        url, 
-        title: title || url, 
+        url: cleanUrl, 
+        title: title || cleanUrl, 
         description, 
         tags: tagArray, 
         enriched: false,
@@ -88,12 +100,12 @@ export const AddLinkForm: React.FC<AddLinkFormProps> = ({
     try {
         const text = await navigator.clipboard.readText();
         if (text) {
-            setUrl(text);
+            const cleanUrl = sanitizeUrl(text);
+            setUrl(cleanUrl);
             // Try to extract domain as title if empty
             if (!title) {
                 try {
-                     const validUrl = text.match(/^https?:\/\//) ? text : `https://${text}`;
-                     const hostname = new URL(validUrl).hostname.replace('www.', '');
+                     const hostname = new URL(cleanUrl).hostname.replace('www.', '');
                      setTitle(hostname.charAt(0).toUpperCase() + hostname.slice(1));
                 } catch {}
             }
