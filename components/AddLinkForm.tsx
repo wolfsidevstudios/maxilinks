@@ -32,9 +32,15 @@ export const AddLinkForm: React.FC<AddLinkFormProps> = ({
   useEffect(() => {
     if (url && !title) {
         try {
-            const hostname = new URL(url).hostname.replace('www.', '');
-            setTitle(hostname.charAt(0).toUpperCase() + hostname.slice(1));
-        } catch(e) {}
+            // Ensure protocol for parsing purposes
+            const validUrl = url.match(/^https?:\/\//) ? url : `https://${url}`;
+            const hostname = new URL(validUrl).hostname.replace('www.', '');
+            if (hostname) {
+                setTitle(hostname.charAt(0).toUpperCase() + hostname.slice(1));
+            }
+        } catch(e) {
+            // Invalid URL, ignore
+        }
     }
   }, [url]);
 
@@ -86,7 +92,8 @@ export const AddLinkForm: React.FC<AddLinkFormProps> = ({
             // Try to extract domain as title if empty
             if (!title) {
                 try {
-                     const hostname = new URL(text).hostname.replace('www.', '');
+                     const validUrl = text.match(/^https?:\/\//) ? text : `https://${text}`;
+                     const hostname = new URL(validUrl).hostname.replace('www.', '');
                      setTitle(hostname.charAt(0).toUpperCase() + hostname.slice(1));
                 } catch {}
             }

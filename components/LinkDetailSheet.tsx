@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { LinkItem } from '../types';
 import { Button } from './Button';
@@ -19,7 +20,13 @@ export const LinkDetailSheet: React.FC<LinkDetailSheetProps> = ({ link, onUpdate
   const [isGenerating, setIsGenerating] = useState(false);
 
   const IconComp = ICONS.find(i => i.id === link.icon)?.component || ICONS[0].component;
-  const domain = new URL(link.url).hostname.replace('www.', '');
+  
+  let domain = link.url;
+  try {
+    domain = new URL(link.url).hostname.replace('www.', '');
+  } catch (e) {
+    // Fallback gracefully
+  }
 
   const handleToggleFavorite = () => {
     onUpdate({ ...link, isFavorite: !link.isFavorite });

@@ -9,7 +9,14 @@ interface LinkCardProps {
 }
 
 export const LinkCard: React.FC<LinkCardProps> = ({ item, onClick }) => {
-  const domain = new URL(item.url).hostname.replace('www.', '');
+  let domain = item.url;
+  try {
+    domain = new URL(item.url).hostname.replace('www.', '');
+  } catch (e) {
+    // Fallback if URL is invalid (e.g. missing protocol)
+    domain = item.url;
+  }
+  
   const IconComp = ICONS.find(i => i.id === item.icon)?.component || ICONS[0].component;
 
   return (
