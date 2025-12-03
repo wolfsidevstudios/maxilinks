@@ -351,18 +351,33 @@ export default function App() {
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
+    // Enhanced Share Handling
     const incomingShare = getShareParams();
-    if (incomingShare.url || incomingShare.text) {
+    if (incomingShare.url || incomingShare.text || incomingShare.title) {
       let finalUrl = incomingShare.url;
-      if (!finalUrl && incomingShare.text && incomingShare.text.startsWith('http')) {
-        finalUrl = incomingShare.text;
+      
+      // If URL is missing or looks incomplete, try to extract from text/title
+      // This specifically fixes issues where share target puts URL in 'text' field
+      if (!finalUrl) {
+          const contentToCheck = `${incomingShare.text || ''} ${incomingShare.title || ''}`;
+          // Regex to find http/https links
+          const urlMatch = contentToCheck.match(/(https?:\/\/[^\s]+)/);
+          if (urlMatch) {
+              finalUrl = urlMatch[0];
+          }
       }
+
       if (finalUrl) {
+        // Clean up the extracted URL (remove trailing punctuation sometimes added by apps)
+        finalUrl = finalUrl.replace(/[).,;]+$/, '');
+        
         setShareParams({ ...incomingShare, url: finalUrl });
         setIsAddSheetOpen(true);
+        // Clear query params to prevent re-triggering on refresh
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
+    
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };

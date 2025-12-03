@@ -26,7 +26,7 @@ export const Sheet: React.FC<SheetProps> = ({ isOpen, onClose, title, children, 
   if (!visible && !isOpen) return null;
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-end justify-center pointer-events-none`}>
+    <div className={`fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none`}>
       {/* Backdrop */}
       <div 
         className={`absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto ${
@@ -37,10 +37,12 @@ export const Sheet: React.FC<SheetProps> = ({ isOpen, onClose, title, children, 
       
       {/* Sheet Content */}
       <div className={`
-        relative w-full max-w-lg bg-white rounded-t-[2rem] shadow-2xl 
-        transform transition-transform duration-300 ease-out pointer-events-auto
-        max-h-[92vh] flex flex-col
-        ${isOpen ? 'translate-y-0' : 'translate-y-full'}
+        relative w-full max-w-lg bg-white rounded-t-[2rem] md:rounded-[2rem] shadow-2xl 
+        transform transition-all duration-300 ease-out pointer-events-auto
+        max-h-[92vh] md:max-h-[85vh] flex flex-col
+        ${isOpen 
+          ? 'translate-y-0 opacity-100 scale-100' 
+          : 'translate-y-full md:translate-y-0 md:scale-95 md:opacity-0'}
         ${className}
       `}>
         {/* Header / Handle */}
@@ -48,8 +50,8 @@ export const Sheet: React.FC<SheetProps> = ({ isOpen, onClose, title, children, 
             <div className="flex-1">
                  {title && <h2 className="text-xl font-bold text-slate-900">{title}</h2>}
             </div>
-            {/* Drag Handle Indicator for visual affordance */}
-             <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-slate-200 rounded-full" />
+            {/* Drag Handle Indicator for visual affordance - Hide on Desktop */}
+             <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-slate-200 rounded-full md:hidden" />
              
             <button 
                 onClick={onClose}
